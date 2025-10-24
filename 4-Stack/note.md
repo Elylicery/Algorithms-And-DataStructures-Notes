@@ -1,9 +1,12 @@
 # 栈
 
-* 先进后出（FILO）
-* 栈顶、栈底
+栈:
 
-## 用数组实现栈
+* 栈是一种线性结构
+* 先进后出（FILO）/ 后进先出（LIFO）
+* 栈顶：只能从一端添加元素，也只能从一端取出元素，这一端叫栈顶；栈底：栈底部
+
+## 1. 用数组实现栈
 
 ```typescript
 /**
@@ -36,6 +39,14 @@ class Stack<T> {
     this.stack = this.stack.slice(0, this.stack.length - 1);
     return true;
   }
+    
+    // 查看栈顶元素
+    peek(): T | undefined {
+        if (this.isEmpty()) {
+            return undefined;
+        }
+        return this.stack[this.stack.length - 1];
+    }
 
   // 遍历栈元素(参数控制遍历方向，true为从栈底到栈顶，false为从栈顶到栈底)
   stackTraverse(isFromBottom: boolean): void {
@@ -72,9 +83,17 @@ class Stack<T> {
 }
 ```
 
-## 栈应用
+## 2. 栈应用
 
-### 1. 数值转换
+栈的应用：
+
+* Undo操作（撤销）
+
+* 程序调用的系统栈：因为有系统栈记录每一次调用过程中的调用点，在编程时进行子过程调用的时候，当一个子过程执行完成之后，可以回到上层调用中断的位置继续执行下去。
+
+  ![在这里插入图片描述](note.assets/0e28d6791abaf759fee322fcf282a5ca.png)
+
+### 2.1. 数值转换
 
 ```typescript
 /*
@@ -124,7 +143,9 @@ function convertNumberSystem(N: number, d: number): string {
 // console.log(convertNumberSystem(1348, 2)); // 二进制
 ```
 
-### 2. 括号匹配
+### 2. 2 括号匹配
+
+用于编译器
 
 ```typescript
 /*
@@ -134,7 +155,8 @@ function convertNumberSystem(N: number, d: number): string {
 
 字符串示例：[( )]  [( )( )]  [( )[( )]]  [[( )]
 
-目的：通过实例灵活掌握栈机制的使用技巧
+思路：维护一个栈，对于输入的括号序列，遇到左括号就入栈，遇到右括号就和当前栈顶的左括号匹配，直到栈为空，匹配失败则括号不匹配。
+（栈顶元素反映了在嵌套的层次关系中，最近的需要匹配的元素）
 */
 
 function isBracketMatched(str: string): boolean {
