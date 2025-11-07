@@ -387,4 +387,159 @@ class LinkedListQueue<E> implements Queue<E> {
 }
 ```
 
-TODO
+### 2.4 链表的天然递归结构性质
+
+![在这里插入图片描述](note.assets/2823435c6e685344dab1e89715c0566d.png)
+
+![image-20251107153336749](note.assets/image-20251107153336749.png)
+
+对于写一个递归算法只有两部分
+
+- 问题规模最小的情况的解
+- 分成多个小问题,构建递归过程
+
+好好看代码，我们是怎样复用removeELements这个函数来解决了一个更小规模的问题，并且用这个更小规模问题的解res组建成原问题的解。
+
+```ts
+// 定义链表节点类
+class ListNode {
+    val: number;
+    next: ListNode | null;
+    constructor(val?: number, next?: ListNode | null) {
+        this.val = val === undefined ? 0 : val;
+        this.next = next === undefined ? null : next;
+    }
+}
+
+// 移除链表中值为 val 的节点
+function removeElements(head: ListNode | null, val: number): ListNode | null {
+    if (head === null) {
+        return head;
+    }
+    
+    ListNode res = removeElements(head.next,val);
+    if (head.val==val)
+       return res;
+    else{
+       head.next = res;
+       return head;
+    }
+}
+```
+
+使用打印输出的方式展现一个递归函数调用的整个过程，其中depth表示递归深度
+
+```ts
+class RecurDebug {
+  // 递归移除链表节点，带深度参数打印调试日志
+  removeElements(head: ListNode | null, val: number, depth: number): ListNode | null {
+    const depthString = this.generateDepthString(depth);
+    console.log(`${depthString}Call: remove ${val} in ${head ? head.toString() : 'null'}`);
+
+    // 终止条件：当前节点为 null
+    if (head === null) {
+      console.log(`${depthString}Return: null`);
+      return null;
+    }
+
+    // 递归处理下一个节点（深度+1）
+    const res = this.removeElements(head.next, val, depth + 1);
+    console.log(`${depthString}After move ${val}: ${res ? res.toString() : 'null'}`);
+
+    // 判断当前节点是否需要移除
+    const ret: ListNode | null = head.val === val ? res : (() => {
+      head.next = res;
+      return head;
+    })();
+
+    console.log(`${depthString}Return: ${ret ? ret.toString() : 'null'}`);
+    return ret;
+  }
+
+  private generateDepthString(depth: number): string {
+    let res = '';
+    for (let i = 0; i < depth; i++) {
+      res += '--';
+    }
+    return res;
+  }
+}
+
+function testRecurDebug() {
+  const nums = [1, 2, 6, 3, 4, 5, 6];
+  const head = ListNode.fromArray(nums);
+  console.log('初始链表：', head?.toString() || 'null');
+  console.log('----------------------------------------');
+
+  const debug = new RecurDebug();
+  const res = debug.removeElements(head, 6, 0);
+  console.log('----------------------------------------');
+  console.log('最终结果：', res?.toString() || 'null');
+}
+testRecurDebug();
+```
+
+打印结果
+
+```
+初始链表： 1->2->6->3->4->5->6->NULL
+----------------------------------------
+Call: remove 6 in 1->2->6->3->4->5->6->NULL
+--Call: remove 6 in 2->6->3->4->5->6->NULL
+----Call: remove 6 in 6->3->4->5->6->NULL
+------Call: remove 6 in 3->4->5->6->NULL
+--------Call: remove 6 in 4->5->6->NULL
+----------Call: remove 6 in 5->6->NULL
+------------Call: remove 6 in 6->NULL
+--------------Call: remove 6 in null--------------Return: null
+------------After move 6: null
+------------Return: null
+----------After move 6: null
+----------Return: 5->NULL
+--------After move 6: 5->NULL
+--------Return: 4->5->NULL
+------After move 6: 4->5->NULL
+------Return: 3->4->5->NULL
+----After move 6: 3->4->5->NULL
+----Return: 3->4->5->NULL
+--After move 6: 3->4->5->NULL
+--Return: 2->3->4->5->NULL
+After move 6: 2->3->4->5->NULL
+Return: 1->2->3->4->5->NULL
+----------------------------------------
+最终结果： 1->2->3->4->5->NULL
+```
+
+关于递归：近乎和链表相关的所有操作，都可以使用递归的形式完成。
+
+其他练习
+
+- leetcode练习题 “链表”相关
+- 斯坦福的文档 LinkedListProblem.pdf里面有18个问题，可以看。
+
+## 3. 其他链表
+
+### 3.1 双链表
+
+```typescript
+class Node {
+	E e;
+	Node next,prev
+}
+```
+
+![在这里插入图片描述](note.assets/ecc7d66b4d1c89f4d18ef73089738c9b.png)
+
+### 3.2 循环链表
+
+![在这里插入图片描述](note.assets/0cfbbc0f39c955b43d8bf9e1b6619227.png)
+
+### 3.3 数组链表
+
+![在这里插入图片描述](note.assets/823441b2bb279dc25ad80f46d9f8952e.png)
+
+数组链表（也称 “静态链表”）：
+
+* 用两个数组（或一个结构体数组）存储链表核心信息：存储每个节点的数据及当前节点的 “下一个节点在数组中的索引”（替代传统链表的 `next` 引用）。
+* 用一个变量（如 `head`）记录链表头节点的数组索引，`next[i] = -1` 表示链表尾（替代 `null`）
+* 内存地址连续（数组特性），但节点关联依赖索引（链表特性）。
