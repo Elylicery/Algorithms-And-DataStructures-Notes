@@ -1,9 +1,16 @@
 # 树
 
-- 树是节点的有限集合
+- 树是节点的有限集合，是一种天然的组织结构
 - 树的用途：压缩软件 哈夫曼树；人机对战（不断做树的搜索）；
+- 有二分搜索树，平衡二叉树，AVL树，红黑树，堆，并查集，线段树，Trie（字典数，前缀树）
 
-## 1. 二叉树数组
+## 1. 二叉树
+
+![在这里插入图片描述](note.assets/04ea9d88b26858161def758883ea022b.png)
+
+* 二叉树不一定是“满”的，一个节点也是二叉树、空（NULL）也是二叉树
+
+### 1.1  二叉树数组
 
 ```typescript
 /** 
@@ -141,7 +148,7 @@ main();
 
 ```
 
-## 2. 二叉树链表
+### 1.2 二叉树链表
 
 ```
 /**
@@ -350,5 +357,96 @@ function main() {
 }
 
 main();
+```
+
+## 2. 二分搜索树
+
+### 2.1 BST
+
+![在这里插入图片描述](note.assets/74f0b824e5d09e6b7e438cbd2b00e1d4.png)
+
+注意：二分搜索树中的结点必须具有可比较性；
+
+```ts
+// 泛型约束：E 必须是可比较的类型
+class BST<E extends { compareTo(other: E): number }> {
+    private class Node {
+        public e: E;
+        public left: Node | null;
+        public right: Node | null;
+
+        constructor(e: E) {
+            this.e = e;
+            this.left = null;
+            this.right = null;
+        }
+    }
+
+    private root: Node | null;
+    private size: number;
+
+    constructor() {
+        this.root = null;
+        this.size = 0;
+    }
+
+    size(): number {
+        return this.size;
+    }
+    isEmpty(): boolean {
+        return this.size === 0;
+    }
+}
+```
+
+### 2.2  向二分搜索树中添加元素
+
+向二分搜索树中添加新元素
+
+* 我们的二分搜索树不包含重复元素（如果想包含重复元素，只需要定义：左子树小于等于结点；或者右子树大于等于节点）
+* 二分搜索树添加元素的非递归写法，和链表很像；
+* 更常用递归实现，更简单
+
+```typescript
+class BST<E extends { compareTo(other: E): number }> 
+    //...
+    
+    // 向二分搜索树中添加新的元素e
+    add(e: E): void {
+        if (this.root === null) {
+            this.root = new this.Node(e);
+            this.size++;
+        } else {
+            this.addRecursive(this.root, e);
+        }
+    }
+
+    // 向以node为根的二分搜索树中插入元素e，递归算法
+    private addRecursive(node: this.Node, e: E): void {
+        // 元素已存在，直接返回（不重复添加）
+        if (e === node.e) { 
+            return;
+        }
+        // 元素小于当前节点，且左子树为空，直接插入左子节点
+        else if (e.compareTo(node.e) < 0 && node.left === null) {
+            node.left = new this.Node(e);
+            this.size++;
+            return;
+        }
+        // 元素大于当前节点，且右子树为空，直接插入右子节点
+        else if (e.compareTo(node.e) > 0 && node.right === null) {
+            node.right = new this.Node(e);
+            this.size++;
+            return;
+        }
+
+        // 递归向下查找插入位置
+        if (e.compareTo(node.e) < 0) {
+            this.addRecursive(node.left, e); 
+        } else {
+            this.addRecursive(node.right, e); 
+        }
+    }
+}
 ```
 
