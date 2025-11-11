@@ -411,42 +411,127 @@ class BST<E extends { compareTo(other: E): number }> {
 class BST<E extends { compareTo(other: E): number }> 
     //...
     
-    // 向二分搜索树中添加新的元素e
+    // 调用递归辅助方法，更新根节点
     add(e: E): void {
-        if (this.root === null) {
-            this.root = new this.Node(e);
-            this.size++;
-        } else {
-            this.addRecursive(this.root, e);
-        }
+        this.root = this.addRecursive(this.root, e);
     }
 
     // 向以node为根的二分搜索树中插入元素e，递归算法
-    private addRecursive(node: this.Node, e: E): void {
-        // 元素已存在，直接返回（不重复添加）
-        if (e === node.e) { 
-            return;
-        }
-        // 元素小于当前节点，且左子树为空，直接插入左子节点
-        else if (e.compareTo(node.e) < 0 && node.left === null) {
-            node.left = new this.Node(e);
+    // 返回插入新节点后二分搜索树的根
+    private addRecursive(node: this.Node | null, e: E): this.Node {
+        // 递归终止条件：当前节点为null，创建新节点并返回（作为新的子树根）
+        if (node === null) {
             this.size++;
-            return;
-        }
-        // 元素大于当前节点，且右子树为空，直接插入右子节点
-        else if (e.compareTo(node.e) > 0 && node.right === null) {
-            node.right = new this.Node(e);
-            this.size++;
-            return;
+            return new this.Node(e);
         }
 
-        // 递归向下查找插入位置
+        // 递归查找插入位置
         if (e.compareTo(node.e) < 0) {
-            this.addRecursive(node.left, e); 
-        } else {
-            this.addRecursive(node.right, e); 
+            // 元素小于当前节点，插入左子树，更新左指针
+            node.left = this.addRecursive(node.left, e);
+        } else if (e.compareTo(node.e) > 0) {
+            // 元素大于当前节点，插入右子树，更新右指针
+            node.right = this.addRecursive(node.right, e);
+        }
+        // 元素相等时：不插入（默认不存储重复元素）
+
+        // 返回当前节点（插入后，当前子树的根节点不变）
+        return node;
+    }
+}
+```
+
+### 2.3 二分搜索树的查询操作
+
+```typescript
+class BST<E extends { compareTo(other: E): number }> {
+    //...
+
+    // 判断二分搜索树中是否包含元素e
+    contains(e: E): boolean {
+        // 调用递归辅助方法，从根节点开始查找
+        return this.containsRecursive(this.root, e);
+    }
+
+    // 看以node为根的二分搜索树中是否包含元素e
+    private containsRecursive(node: this.Node | null, e: E): boolean {
+        // 递归终止条件：节点为null，说明未找到
+        if (node === null) {
+            return false;
+        }
+        
+        if (e.compareTo(node.e) === 0) {
+            return true;
+        }else if (e.compareTo(node.e) < 0) {
+            return this.containsRecursive(node.left, e);
+        }else {
+            return this.containsRecursive(node.right, e);
         }
     }
 }
 ```
+
+### 2.4  二分搜索树的遍历（递归实现）
+
+#### 前序遍历
+
+![在这里插入图片描述](note.assets/b5ec6f82f4b43966182c946e3183a906.png)
+
+```typescript
+class BST<E extends { compareTo(other: E): number }> {
+    //...
+
+    // 二分搜索树的前序遍历（递归）
+    preOrder(): void {
+        this.preOrderRecursive(this.root);
+    }
+
+    // 前序遍历以node为根的二分搜索树
+    private preOrderRecursive(node: this.Node | null): void {
+        if (node === null) return;
+        console.log(node.e); 
+        // 递归遍历左子树
+        this.preOrderRecursive(node.left);
+        // 递归遍历右子树
+        this.preOrderRecursive(node.right);
+    }
+```
+
+#### 中序遍历
+
+```typescript
+class BST<E extends { compareTo(other: E): number }> {
+    inOrder(): void {
+        this.inOrderRecursive(this.root);
+    }
+
+    private inOrderRecursive(node: this.Node | null): void {
+        if (node === null) return;
+        this.inOrderRecursive(node.left);
+        console.log(node.e); 
+        this.inOrderRecursive(node.right);
+    }
+```
+
+#### 后序遍历
+
+- 后序遍历的一个应用：为二分搜索树释放内存
+
+```typescript
+class BST<E extends { compareTo(other: E): number }> {
+    postOrder(): void {
+        this.postOrderRecursive(this.root);
+    }
+
+    private postOrderRecursive(node: this.Node | null): void {
+        if (node === null) return;
+        this.postOrderRecursive(node.left);
+        this.postOrderRecursive(node.right);
+        console.log(node.e); 
+    }
+```
+
+### 2.5 二分搜索树的遍历（非递归实现）
+
+
 
