@@ -399,7 +399,7 @@ class BST<E extends { compareTo(other: E): number }> {
 }
 ```
 
-### 2.2  向二分搜索树中添加元素
+### 2.2  添加元素
 
 向二分搜索树中添加新元素
 
@@ -441,7 +441,7 @@ class BST<E extends { compareTo(other: E): number }>
 }
 ```
 
-### 2.3 二分搜索树的查询操作
+### 2.3 查询操作
 
 ```typescript
 class BST<E extends { compareTo(other: E): number }> {
@@ -471,7 +471,7 @@ class BST<E extends { compareTo(other: E): number }> {
 }
 ```
 
-### 2.4  二分搜索树的遍历（递归实现）
+### 2.4  遍历（递归实现）
 
 #### 前序遍历
 
@@ -531,7 +531,186 @@ class BST<E extends { compareTo(other: E): number }> {
     }
 ```
 
-### 2.5 二分搜索树的遍历（非递归实现）
+### 2.5  遍历（非递归实现）
 
+#### 深度优先遍历
 
+非递归实现比递归实现复杂很多。中序遍历和后序遍历的非递归实现实际应用不广。前序遍历是深度优先遍历的具体实现之一，下面是前序遍历的使用栈的非递归实现
 
+![在这里插入图片描述](note.assets/09dd8022eaf824687ab47bee7b11fca7.png)
+
+```typescript
+	// 非递归前序遍历（NR = Non-Recursive）
+    preOrderNR(): void {
+        // 根节点为null，直接返回
+        if (this.root === null) return;
+        // TS 用数组模拟栈：push()入栈，pop()出栈（LIFO）
+        const stack: this.Node[] = [];
+        stack.push(this.root);
+
+        // 栈不为空则循环
+        while (stack.length > 0) {
+            // 弹出栈顶节点（当前访问节点）
+            const cur = stack.pop(); 
+            // 访问当前节点
+            console.log(cur.e);
+            // 注意：前序遍历是“根→左→右”，栈是LIFO，因此先压右子树，再压左子树
+            if (cur.right !== null) {
+                stack.push(cur.right);
+            }
+            if (cur.left !== null) {
+                stack.push(cur.left);
+            }
+        }
+    } 
+```
+
+#### 广度优先遍历（层序遍历）
+
+![在这里插入图片描述](note.assets/d0a6ce577ccb4a53a33cda697e728282.png)
+
+```typescript
+// 二分搜索树的层序遍历（非递归，基于队列实现）
+levelOrder(): void {
+    if (this.root === null) return;
+
+    // TS 用数组模拟队列：push()入队，shift()出队（FIFO）
+    const queue: this.Node[] = [];
+    queue.push(this.root);
+
+    while (queue.length > 0) {
+        // 出队队首节点（当前访问节点）
+        const cur = queue.shift();
+        // 访问当前节点
+        console.log(cur.e);
+
+        // 左子树先入队，右子树后入队（保证层序顺序）
+        if (cur.left !== null) {
+            queue.push(cur.left);
+        }
+        if (cur.right !== null) {
+            queue.push(cur.right);
+        }
+    }
+}
+```
+
+层序遍历常用于算法设计中找最短路径
+
+### 2.6 删除最大元素和最小元素
+
+从最简单的，删除二分搜索树的最大值和最小值开始。
+
+以删除最大值为例
+
+- 如果最大值直接为叶子节点，删除即可
+- 如果不是，则将该左结点上提至该位置即可
+
+![在这里插入图片描述](note.assets/2e82fb60ce0d3dbff1abd9f079af3c56.png)
+
+![在这里插入图片描述](note.assets/86039cb5304bbdab433b6c2e13c7534c.png)
+
+```typescript
+// 寻找二分搜索树中的最小元素
+minimum(): E {
+    if (this.size === 0) {
+        throw new Error("BST is empty");
+    }
+    const minNode = this.minimumNode(this.root);
+    return minNode.e;
+}
+
+// 私有递归辅助：返回以 node 为根的 BST 最小值所在节点
+private minimumNode(node: this.Node): this.Node {
+    if (node.left === null) {
+        return node;
+    }
+    return this.minimumNode(node.left);
+}
+
+// 寻找二分搜索树中的最大元素（公开方法）
+maximum(): E {
+    if (this.size === 0) {
+        throw new Error("BST is empty");
+    }
+    const maxNode = this.maximumNode(this.root);
+    return maxNode.e;
+}
+
+// 私有递归辅助：返回以 node 为根的 BST 最大值所在节点
+private maximumNode(node: this.Node): this.Node {
+    if (node.right === null) {
+        return node;
+    }
+    return this.maximumNode(node.right);
+}
+
+// 从 BST 中删除最小值所在节点，返回最小值
+removeMin(): E {
+    const ret = this.minimum(); // 先获取最小值（已处理空树异常）
+    this.root = this.removeMinNode(this.root);
+    return ret;
+}
+
+// 删除以 node 为根的 BST 中的最小节点，返回删除后的新根
+private removeMinNode(node: this.Node): this.Node | null {
+    if (node.left === null) {
+        // 找到最小节点（左子树为空），将其右子树替代当前节点
+        const rightNode = node.right;
+        node.right = null;
+        this.size--;
+        return rightNode;
+    }
+    // 递归删除左子树的最小节点，更新左指针
+    node.left = this.removeMinNode(node.left);
+    return node;
+}
+
+// 从 BST 中删除最大值所在节点，返回最大值
+removeMax(): E {
+    const ret = this.maximum(); // 先获取最大值
+    this.root = this.removeMaxNode(this.root); 
+    return ret;
+}
+
+// 私有递归辅助：删除以 node 为根的 BST 中的最大节点，返回删除后的新根
+private removeMaxNode(node: this.Node): this.Node | null {
+    if (node.right === null) {
+        // 找到最大节点（右子树为空），将其左子树替代当前节点
+        const leftNode = node.left;
+        node.left = null; // 断开连接，便于垃圾回收
+        this.size--;
+        return leftNode;
+    }
+
+    // 递归删除右子树的最大节点，更新右指针
+    node.right = this.removeMaxNode(node.right);
+    return node;
+}
+```
+
+测试代码
+
+```typescript
+function testRemoveMin() {
+    // 1. 初始化：创建存储 number 类型的 BST 实例
+    const bst = new BST<number>();
+    const n = 1000; 
+
+    // 2. 向 BST 插入 1000 个随机整数（范围 0-9999）
+    for (let i = 0; i < n; i++) {
+        const randomNum = Math.floor(Math.random() * 10000); 
+        bst.add(randomNum); 
+    }
+    // 3. 批量删除 BST 的最小值，存入数组
+    const nums: number[] = [];
+    while (!bst.isEmpty()) {
+        const minNum = bst.removeMin(); 
+        nums.push(minNum);
+    }
+    // 4. 验证结果：输出删除的元素列表（可选）
+    console.log("删除的元素列表（升序为正确结果）：", nums);
+}
+```
+
+#### 2.7 删除任意元素
