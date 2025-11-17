@@ -713,4 +713,108 @@ function testRemoveMin() {
 }
 ```
 
-#### 2.7 删除任意元素
+### 2.7 删除任意元素
+
+几种情况
+
+- 如果删除只有左孩子的结点，将左孩子代替该位置即可
+- 如果删除只有右孩子的结点，将右孩子代替该位置即可
+- 如果删除左右都有孩子的结点，先找到后继（其右子树大于该节点的最小值），取代这个元素。
+
+![在这里插入图片描述](note.assets/b996f1f16a14c1480d9e1b8108673f2e.png)
+
+![在这里插入图片描述](note.assets/a60c7512b021669268ecfeb2a240c1d9.png)
+
+- 注意：当然，寻找左子树的最大前驱一样可以维持树
+
+```typescript
+// 公开方法：从二分搜索树中删除元素为 e 的节点
+remove(e: E): void {
+    this.root = this.removeNode(this.root, e);
+}
+
+// 删除以 node 为根的 BST 中值为 e 的节点，递归算法
+// 返回删除节点后新的二分搜索树的根
+private removeNode(node: this.Node | null, e: E): this.Node | null {
+    // 递归终止：未找到待删除节点，返回 null
+    if (node === null) {
+        return null;
+    }
+
+    // 1. 查找待删除节点（递归遍历左/右子树）
+    if (e.compareTo(node.e) < 0) {
+        node.left = this.removeNode(node.left, e);
+        return node;
+    } else if (e.compareTo(node.e) > 0) {
+        node.right = this.removeNode(node.right, e);
+        return node;
+    } else {
+        // 2. 找到待删除节点（e 与 node.e 相等），处理三种情况
+
+        // 情况1：待删除节点左子树为空 → 用右子树替代
+        if (node.left === null) {
+            const rightNode = node.right;
+            node.right = null; // 断开连接，便于垃圾回收
+            this.size--;
+            return rightNode;
+        }
+
+        // 情况2：待删除节点右子树为空 → 用左子树替代
+        if (node.right === null) {
+            const leftNode = node.left;
+            node.left = null; // 断开连接，便于垃圾回收
+            this.size--;
+            return leftNode;
+        }
+
+        // 情况3：待删除节点左右子树均不为空
+        // 核心逻辑：找「后继节点」（右子树的最小值节点）替代待删除节点
+        const successor = this.minimumNode(node.right); // 复用之前实现的最小节点查找方法
+        // 后继节点的右子树 = 删除右子树最小值后的新根（复用 removeMinNode 方法，已处理 size--）
+        successor.right = this.removeMinNode(node.right);
+        // 后继节点的左子树 = 待删除节点的左子树
+        successor.left = node.left;
+
+        // 断开待删除节点的连接
+        node.left = null;
+        node.right = null;
+
+        // 返回后继节点，作为新的子树根
+        return successor;
+    }
+}
+
+// 复用之前实现的辅助方法（确保存在以下两个方法）
+// 1. 查找最小节点（已实现，此处为提醒，无需重复编写）
+private minimumNode(node: this.Node): this.Node {
+    return node.left === null ? node : this.minimumNode(node.left);
+}
+
+// 2. 删除最小节点（已实现，此处为提醒，无需重复编写）
+private removeMinNode(node: this.Node): this.Node | null {
+    if (node.left === null) {
+        const rightNode = node.right;
+        node.right = null;
+        this.size--;
+        return rightNode;
+    }
+    node.left = this.removeMinNode(node.left);
+    return node;
+}
+```
+
+### 2.8 更多二分搜索树相关话题
+
+- 二分搜索的顺序性：minimum，maximum，successor，oredecessor，floor，ceil，rank，select
+
+![在这里插入图片描述](note.assets/79e95d7e44eb9068986984ab7eb05461.png)
+
+![在这里插入图片描述](note.assets/8c97c808918455420f8679ed3188b31f.png)
+
+![在这里插入图片描述](note.assets/b19d4c0ea0c979f70df4cb4b75b54123.png)
+
+![在这里插入图片描述](note.assets/2ac6effb2f0574dfadd2680abfe08391.png)
+
+![在这里插入图片描述](note.assets/e984df8486b6e26fc9d8e2d1baaa25ff-176334798303220.png)
+
+![在这里插入图片描述](note.assets/6dfc123eab93d92355f205804e9ffdde.png)
