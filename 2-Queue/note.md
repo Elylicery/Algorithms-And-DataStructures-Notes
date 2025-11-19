@@ -1,12 +1,12 @@
 # 队列
 
-## 1. 数组队列
-
 队列Queue
 
 * 队列也是一种线性结构
 * 普通队列，循环队列
 * FIFO：先进先出，只能从一端（队尾）添加元素，只能从另一端（队首）取出元素
+
+## 1. 数组队列
 
 数组队列的复杂度分析
 
@@ -168,3 +168,152 @@ boolean isEmpty O(1)
 
 * 广度优先遍历
 
+## 4. 优先队列和堆
+
+### 4.1 优先队列
+
+什么是优先队列？
+
+* 普通队列：先进先出，后进后出；
+* 优先队列：出队顺序和入队顺序无关，和优先级相关；例子：计算机的操作系统，动态选择优先级最高的任务执行；
+
+```typescript
+interface Queue<E> {   // <--implement-- PriorityQueue<E> 可以使用不同的底层实现
+  enqueue(e: E): void;
+  dequeue(): E | undefined;
+  getFront(): E | undefined;
+  getSize(): number;
+  isEmpty(): boolean;
+}
+```
+
+|              | 入队       | 出队（拿出最大元素） |
+| ------------ | ---------- | -------------------- |
+| 普通线性结构 | O（1）     | O（n）               |
+| 顺序线性结构 | O（n）     | O（1）               |
+| 堆           | O（nlogn） | O（nlogn）           |
+
+### 4.2 堆的基础表示
+
+- 二叉堆是一个完全二叉树（结点按顺序存放，所以我们可以使用数组来表示完全二叉树）
+- 二叉堆堆中某个结点的值总是不大于其父节点的值，**最大堆**
+- 用数组存储二叉堆
+
+注意下标起始的影响
+
+![在这里插入图片描述](note.assets/74eb96d606e0d080ea3ac6a5944ddae2.png)
+
+![在这里插入图片描述](note.assets/7a45b793a93413438b3e941aba288dc7.png)
+
+```typescript
+// 在这里，我们使用一个从0开始的数组表示的二叉堆
+class MaxHeap<E extends { compareTo(other: E): number }> {
+  private data: E[];
+
+  constructor(capacity?: number) {
+    this.data = capacity ? new Array(capacity) : [];
+   }
+
+  size(): number {
+    return this.data.length;
+  }
+
+  isEmpty(): boolean {
+    return this.data.length === 0;
+  }
+
+  // 返回完全二叉树的数组表示中，一个索引所表示的元素的父亲节点的索引
+  private parent(index: number): number {
+    if (index === 0) {
+      throw new Error("index-0 doesn't have parent");
+    }
+    return Math.floor((index - 1) / 2);
+  }
+
+  //  返回完全二叉树的数组表示中，一个索引所表示的元素的左孩子节点的索引
+  private leftChild(index: number): number {
+    return index * 2 + 1;
+  }
+
+  //返回完全二叉树的数组表示中，一个索引所表示的元素的右孩子节点的索引
+  private rightChild(index: number): number {
+    return index * 2 + 2;
+  }
+}
+```
+
+### 4.3 向堆中添加元素和Shit Up
+
+```typescript
+// 向堆中添加元素
+add(e: E): void {
+    this.data.push(e); 
+    this.siftUp(this.data.length - 1); // 从最后一个元素索引开始上浮
+}
+
+// 上浮调整（siftUp 方法，确保最大堆特性）
+private siftUp(k: number): void {
+    // 循环条件：k > 0（非根节点）且 父节点值 < 当前节点值（违反最大堆特性）
+    while (k > 0 && this.data[this.parent(k)].compareTo(this.data[k]) < 0) {
+        const parentIdx = this.parent(k);
+        this.data.swap(k, parentIdx); // 交换当前节点与父节点
+        [this.data[k], this.data[parentIdx]] = [this.data[parentIdx], this.data[k]];
+        k = parentIdx; // 更新 k 为父节点索引，继续向上校验
+    }
+}
+```
+
+### 4.3 从堆中取出元素和Sift Down
+
+```typescript
+// 取出堆中最大元素
+extractMax(): E {
+    const ret = this.data[0]; // 堆顶为最大值
+    // 交换堆顶与最后一个元素
+    [this.data[0], this.data[this.data.length - 1]] = [this.data[this.data.length - 1], this.data[0]];
+    this.data.pop(); // 移除最后一个元素
+    this.siftDown(0); // 堆顶下沉调整
+    return ret;
+}
+
+// 下沉调整（维持最大堆特性）
+private siftDown(k: number): void {
+    const size = this.data.length;
+    // 左孩子索引存在时进入循环
+    while (this.leftChild(k) < size) {
+        let j = this.leftChild(k); // 初始指向左孩子
+        // 右孩子存在且大于左孩子，j指向右孩子
+        if (j + 1 < size && this.data[j + 1].compareTo(this.data[j]) > 0) {
+            j++;
+        }
+        // 当前节点 >= 子节点最大值，无需继续下沉
+        if (this.data[k].compareTo(this.data[j]) >= 0) {
+            break;
+        }
+        // 交换当前节点与子节点最大值
+        [this.data[k], this.data[j]] = [this.data[j], this.data[k]];
+        k = j; // 更新索引继续下沉
+    }
+}
+```
+
+### 4.4 Heapify和Replace
+
+**Replace**
+
+* replace：取出最大元素后，放入一个新元素
+* 实现：可以直接将堆顶元素替换以后SiftDown，一次O（nlogn）的操作
+
+```typescript
+// 取出堆中最大元素，同时替换为元素 e
+replace(E e): E {
+    const ret = this.data[0]; // 保存堆顶最大元素
+    this.data[0] = e; // 用新元素 e 替换堆顶
+    this.siftDown(0); // 下沉调整，维持最大堆特性
+    return ret;
+}
+```
+
+**Heapify**
+
+heapify：将任意数组整理成堆的形状
