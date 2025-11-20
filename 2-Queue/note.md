@@ -175,7 +175,7 @@ boolean isEmpty O(1)
 什么是优先队列？
 
 * 普通队列：先进先出，后进后出；
-* 优先队列：出队顺序和入队顺序无关，和优先级相关；例子：计算机的操作系统，动态选择优先级最高的任务执行；
+* 优先队列：出队顺序和入队顺序无关，和优先级相关（对内元素需要具有可比较性）；例子：计算机的操作系统，动态选择优先级最高的任务执行；
 
 ```typescript
 interface Queue<E> {   // <--implement-- PriorityQueue<E> 可以使用不同的底层实现
@@ -193,7 +193,7 @@ interface Queue<E> {   // <--implement-- PriorityQueue<E> 可以使用不同的�
 | 顺序线性结构 | O（n）     | O（1）               |
 | 堆           | O（nlogn） | O（nlogn）           |
 
-### 4.2 堆的基础表示
+### 4.2 堆的基础表示MaxHeap
 
 - 二叉堆是一个完全二叉树（结点按顺序存放，所以我们可以使用数组来表示完全二叉树）
 - 二叉堆堆中某个结点的值总是不大于其父节点的值，**最大堆**
@@ -316,4 +316,59 @@ replace(E e): E {
 
 **Heapify**
 
-heapify：将任意数组整理成堆的形状
+**heapify：将任意数组整理成堆的形状**
+
+![在这里插入图片描述](note.assets/4b95606ae9a47992b736494cb0cf3401.png)
+
+```typescript
+// 从数组构造最大堆
+constructor(arr: E[]) {
+    this.data = [...arr]; 
+    // 从最后一个元素的父节点开始，向前遍历并下沉调整
+    for (let i = this.parent(this.data.length - 1;); i >= 0; i--) {
+        this.siftDown(i);
+    }
+}
+```
+
+**算法复杂度**：将n个元素逐个插入到一个空堆中，算法复杂度是O(nlogn)；heapify的过程，算法复杂度是O（n）；所以对比使用heapify的方式创建堆和将数组中的元素逐个添加到空堆中的性能差异，比较结果：对于百万级的数据量，Heapify的复杂度更低
+
+### 4.5 基于堆的优先队列
+
+```typescript
+// 基于 MaxHeap 实现优先级队列（最大堆 -> 大顶优先级队列）
+class PriorityQueue<E extends { compareTo(other: E): number }> implements Queue<E> {
+    private maxHeap: MaxHeap<E>;
+
+    constructor() {
+        this.maxHeap = new MaxHeap<E>();
+    }
+    getSize(): number {
+        return this.maxHeap.size();
+    }
+    isEmpty(): boolean {
+        return this.maxHeap.isEmpty();
+    }
+    // 获取队首元素（优先级最高，即堆顶最大值）
+    getFront(): E {
+        return this.maxHeap.findMax();
+    }
+    // 入队（添加元素到堆，自动调整优先级）
+    enqueue(e: E): void {
+        this.maxHeap.add(e);
+    }
+    // 出队（移除优先级最高的元素，即堆顶最大值）
+    dequeue(): E {
+        return this.maxHeap.extractMax();
+    }
+}
+```
+
+### 4.8 和堆相关的更多话题和广义队列
+
+- d叉堆
+- 索引堆
+- 二项堆，斐波那契堆
+- 广义队列
+  普通队列，优先队列
+  栈，也可以理解成一个队列。
