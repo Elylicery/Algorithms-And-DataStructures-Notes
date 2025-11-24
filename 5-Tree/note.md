@@ -818,3 +818,362 @@ private removeMinNode(node: this.Node): this.Node | null {
 ![在这里插入图片描述](note.assets/e984df8486b6e26fc9d8e2d1baaa25ff-176334798303220.png)
 
 ![在这里插入图片描述](note.assets/6dfc123eab93d92355f205804e9ffdde.png)
+
+## 3.线段树
+
+### 3.1 线段树（区间树）
+
+- 对于有一类问题，我们关心的是线段（或者区间）
+
+**经典问题1： 区间染色**
+
+![在这里插入图片描述](note.assets/f2de4dd91e8f105d688e99a8e1411874.png)
+
+|                      | 使用数组实现 |
+| -------------------- | ------------ |
+| 染色操作（更新区间） | O(n)         |
+| 查询操作（查询区间） | O(n)         |
+
+经典问题2： 区间查询
+
+![在这里插入图片描述](note.assets/a51e9b88d31be50d258b3a9dcdd223af.png)
+
+**为什么要使用线段树？**
+
+**实质：基于区间的统计查询**
+
+- 实质：基于区间的统计查询
+- 示例问题：
+  - 2017 年注册用户中消费最高的用户？消费最少的用户？学习时间最长的用户？
+  - 某个太空区间中天体总量？
+
+|      | 使用数组实现 | 使用线段树 |
+| ---- | ------------ | ---------- |
+| 更新 | O(n)         | O(logn)    |
+| 查询 | O(n)         | O(logn)    |
+
+![在这里插入图片描述](note.assets/fc653084451a75149e221e34bc51529c.png)
+
+![image-20251124110055756](note.assets/image-20251124110055756.png)
+
+### 3.2 线段树基础表示
+
+![在这里插入图片描述](note.assets/dcc3a8b0d4e75de5330d6ebacd413f47.png)
+
+![在这里插入图片描述](note.assets/cf4da83422e6dbc8e5418058dbabb288.png)
+
+- 问题：如果区间有 n 个元素 数组表示需要有多少节点？
+- 结论：需要 4n 的空间
+- 说明：我们的线段树不考虑添加元素，即区间固定；使用 4n 的静态空间即可
+
+### 3.3 创建线段树
+
+![img](note.assets/d1488cd28cb0cda9803392432c7e1ec4.png)
+
+```typescript
+// 定义 Merger
+interface Merger<E> {
+  merge(a: E, b: E): E;
+}
+
+class SegmentTree<E> {
+  private tree: (E | null)[];
+  private data: E[];
+  private merger: Merger<E>;
+
+  constructor(arr: E[], merger: Merger<E>) {
+    this.merger = merger;
+    this.data = [...arr]; // 深拷贝输入数组
+    this.tree = new Array<E | null>(4 * arr.length).fill(null); // 初始化4n空间
+    this.buildSegmentTree(0, 0, this.data.length - 1);
+  }
+
+  // 构建线段树的递归方法
+  //在treeIndex的位置创建表示区间[1....r]的线段树
+  private buildSegmentTree(treeIndex: number, l: number, r: number): void {
+    if (l === r) {
+      this.tree[treeIndex] = this.data[l];
+      return;
+    }
+
+    const leftTreeIndex = this.leftChild(treeIndex);
+    const rightTreeIndex = this.rightChild(treeIndex);
+
+    //int mid = (l+r)/2 为避免l和r都特别大的时候使得l+r产生整形溢出的情况
+    const mid = l + Math.floor((r - l) / 2);
+    this.buildSegmentTree(leftTreeIndex, l, mid);
+    this.buildSegmentTree(rightTreeIndex, mid + 1, r);
+
+    this.tree[treeIndex] = this.merger.merge(
+      this.tree[leftTreeIndex]!,
+      this.tree[rightTreeIndex]!
+    );
+  }
+
+  getSize(): number {
+    return this.data.length;
+  }
+
+  get(index: number): E {
+    if (index < 0 || index >= this.data.length) {
+      throw new Error("Index is illegal.");
+    }
+    return this.data[index];
+  }
+
+  private leftChild(index: number): number {
+    return 2 * index + 1;
+  }
+
+  private rightChild(index: number): number {
+    return 2 * index + 2;
+  }
+
+  printSegementTree(): string {
+    const res: (E | "null")[] = [];
+    for (const node of this.tree) {
+      res.push(node === null ? "null" : node);
+    }
+    return `[${res.join(", ")}]`;
+  }
+}
+
+// 测试代码
+const nums = [-2, 0, 3, -5, 2, -1];
+const sumMerger: Merger<number> = {
+  merge(a, b) {
+    return a + b;
+  },
+};
+const segTree = new SegmentTree(nums, sumMerger);
+console.log(segTree.printSegementTree());
+// [-3, 1, -4, -2, 3, -3, -1, -2, 0, null, null, -5, 2, null, null, null, null, null, null, null, null, null, null, null]
+```
+
+### 3.4 线段树中的区间查询
+
+![在这里插入图片描述](note.assets/6c4896b207541ee0bce81ba878ad3e71.png)
+
+```typescript
+ //区间查询方法,返回区间[queryL,queryR]的值
+    query(queryL: number, queryR: number): E {
+        if (
+            queryL < 0 || queryL >= this.data.length ||
+            queryR < 0 || queryR >= this.data.length ||
+            queryL > queryR
+        ) {
+            throw new Error("Index is illegal");
+        }
+        return this._query(0, 0, this.data.length - 1, queryL, queryR);
+    }
+
+    // 在以treeIndex为根的线段树中[l,,,,r]的范围里，搜索区间[queryL....qeuryR]的值
+    private _query(
+        treeIndex: number,
+        l: number,
+        r: number,
+        queryL: number,
+        queryR: number
+    ): E {
+        if (l === queryL && r === queryR) {
+            return this.tree[treeIndex]!;
+        }
+
+        const mid = l + Math.floor((r - l) / 2);
+        const leftTreeIndex = this.leftChild(treeIndex);
+        const rightTreeIndex = this.rightChild(treeIndex);
+
+        if (queryL >= mid + 1) {
+            return this._query(rightTreeIndex, mid + 1, r, queryL, queryR);
+        } else if (queryR <= mid) {
+            return this._query(leftTreeIndex, l, mid, queryL, queryR);
+        }
+
+        const leftResult = this._query(leftTreeIndex, l, mid, queryL, mid);
+        const rightResult = this._query(rightTreeIndex, mid + 1, r, mid + 1, queryR);
+        return this.merger.merge(leftResult, rightResult);
+    }
+```
+
+### 3.5 线段树的更新操作
+
+```typescript
+ // 更新 index 位置的值为 e
+    set(index: number, e: E): void {
+        if (index < 0 || index >= this.data.length) {
+            throw new Error("Index is illegal");
+        }
+        this.data[index] = e; // 更新原始数据
+        this._set(0, 0, this.data.length - 1, index, e); // 递归更新线段树
+    }
+
+    // 在以 treeIndex 为根的线段树中，更新 index 位置的值为 e
+    private _set(treeIndex: number, l: number, r: number, index: number, e: E): void {
+        if (l === r) {
+            this.tree[treeIndex] = e; // 叶子节点，直接更新
+            return;
+        }
+
+        const mid = l + Math.floor((r - l) / 2);
+        const leftTreeIndex = this.leftChild(treeIndex);
+        const rightTreeIndex = this.rightChild(treeIndex);
+        if (index >= mid + 1) {
+            // 目标索引在右子树，递归更新右子树
+            this._set(rightTreeIndex, mid + 1, r, index, e);
+        } else {
+            // 目标索引在左子树，递归更新左子树
+            this._set(leftTreeIndex, l, mid, index, e);
+        }
+
+        // 关键：更新完子节点后，回溯更新当前节点（合并左右子树的新结果）
+        this.tree[treeIndex] = this.merger.merge(
+            this.tree[leftTreeIndex]!,
+            this.tree[rightTreeIndex]!
+        );
+    }
+```
+
+
+
+### 3.6  LeetCode上线段树相关的问题
+
+![在这里插入图片描述](note.assets/b7710930a90d6c427442f67604f5a625.png)
+
+```typescript
+function main() {
+    const nums = [-2, 0, 3, -5, 2, -1];
+    const sumMerger: Merger<number> = {
+        merge(a, b) {
+            return a + b;
+        }
+    };
+    const segTree = new SegmentTree(nums, sumMerger);
+
+    // console.log("线段树结构：", segTree.toString());
+    // 测试区间查询
+    console.log("\n区间查询测试：");
+    console.log("区间 [0, 2] 的和：", segTree.query(0, 2)); // 预期：-2 + 0 + 3 = 1
+    console.log("区间 [3, 5] 的和：", segTree.query(3, 5)); // 预期：-5 + 2 + (-1) = -4
+}
+```
+
+想快速查询某个区间的元素和，而且这个区间中的元素不会改变，对于这样的需求可以进行**预处理**
+
+```typescript
+class NumArray {
+  private sum: number[];
+  // sum[i] 存储前 i 个元素和（sum[0] = 0），sum[i] = nums[0...i-1] 的和
+
+  constructor(nums: number[]) {
+    const len = nums.length;
+    this.sum = new Array(len + 1);
+    this.sum[0] = 0; // 初始化前 0 个元素和为 0
+    // 计算前缀和：sum[i] = sum[i-1] + nums[i-1]
+    for (let i = 1; i < this.sum.length; i++) {
+      this.sum[i] = this.sum[i - 1] + nums[i - 1];
+    }
+  }
+
+  // 计算区间 [i, j] 的和（闭区间），公式：sum[j+1] - sum[i]
+  sumRange(i: number, j: number): number {
+    return this.sum[j + 1] - this.sum[i];
+  }
+}
+
+// 测试代码
+const nums1 = [-2, 0, 3, -5, 2, -1];
+const numArray = new NumArray(nums1);
+
+console.log(numArray.sumRange(0, 2)); // 输出：1（-2 + 0 + 3）
+console.log(numArray.sumRange(3, 5)); // 输出：-4（-5 + 2 + (-1)）
+```
+
+![在这里插入图片描述](note.assets/962ceb09e5d7eab33b10c2dfb761fc41.png)
+
+```typescript
+class NumArray3 {
+  private data: number[];
+  private sum: number[]; // sum[i] 存储前 i 个元素和（sum[0] = 0），sum[i] = data[0..i-1] 的和
+
+  constructor(nums: number[]) {
+    this.data = [...nums]; // 存储原始数据
+    this.sum = new Array(nums.length + 1);
+    this.sum[0] = 0;
+    for (let i = 1; i <= nums.length; i++) {
+      this.sum[i] = this.sum[i - 1] + this.data[i - 1];
+    }
+  }
+
+  sumRange(left: number, right: number): number {
+    return this.sum[right + 1] - this.sum[left];
+  }
+
+  // 更新指定索引的值，并重新计算前缀和
+  update(index: number, val: number): void {
+    this.data[index] = val;
+    // 从 index+1 开始重新计算前缀和（因 index 对应 sum 的 index+1 位置）
+    for (let i = index + 1; i < this.sum.length; i++) {
+      this.sum[i] = this.sum[i - 1] + this.data[i - 1];
+    }
+  }
+}
+```
+
+**注意：使用数组虽然可以实现，但是耗时非常多，会超出时间限制。这个时候就要用到我们的线段树。**
+
+线段树实现版本
+
+```typescript
+interface Merger<E> {
+    merge(a: E, b: E): E;
+}
+
+// 线段树类（求和场景）
+class SegmentTree<E> {
+    //.....
+}
+
+// 3. 实现 LeetCode 307 题的 NumArray 类（基于线段树）
+class NumArray {
+    private segmentTree: SegmentTree<number>;
+
+    constructor(nums: number[]) {
+        // 构建求和线段树（Merger 实现两数相加）
+        const sumMerger: Merger<number> = {
+            merge(a, b) {
+                return a + b;
+            }
+        };
+        this.segmentTree = new SegmentTree(nums, sumMerger);
+    }
+
+    // 更新指定索引的值（O(log n)）
+    update(index: number, val: number): void {
+        this.segmentTree.set(index, val);
+    }
+
+    // 计算区间 [left, right] 的和（O(log n)）
+    sumRange(left: number, right: number): number {
+        return this.segmentTree.query(left, right);
+    }
+}
+
+// 测试用例（完全匹配 LeetCode 示例）
+const numArray = new NumArray([1, 3, 5]);
+console.log(numArray.sumRange(0, 2)); // 输出：9（1+3+5）
+numArray.update(1, 2); // 更新索引1为2，数组变为 [1,2,5]
+console.log(numArray.sumRange(0, 2)); // 输出：8（1+2+5）
+```
+
+### 3.7 更多线段树相关的话题
+
+线段树的相关问题都比较困难，是高级数据结构。一般面试不会考，更多应用于算法竞赛。
+
+更多延伸
+
+* 对于一个区间进行更新，例如将[2,5]去加中的所有元素+3
+* 懒惰更新，使用lazy数组记录未更新的内容。
+* 二维线段树
+* 动态线段树
+* 区间操作相关另外一个重要数据结构：树状数组
+* 区间相关问题：RMQ Range Minimum Query
