@@ -366,7 +366,7 @@ function __merge<T extends number | string>(arr: T[], l: number, mid: number, r:
 }
 ```
 
-### 优化
+#### 优化思路
 
 测试比较插入排序和归并排序
 
@@ -434,12 +434,6 @@ testSort("insertSort",insertionSort,nearlyOrderedArray);
    }
    ```
 
-   
-
-   
-
-   
-
    以上为自顶向下的归并，下面看看：
 
    **自底向上的归并排序**
@@ -464,4 +458,4 @@ testSort("insertSort",insertionSort,nearlyOrderedArray);
    }
    ```
 
-   
+### 快速排序
