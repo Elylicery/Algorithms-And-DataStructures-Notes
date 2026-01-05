@@ -1,8 +1,6 @@
 # 排序
 
-## 排序
-
-
+## 排序基础
 
 ### 选择排序
 
@@ -31,6 +29,44 @@ function selectionSort<T>(arr: T[], compareFn?: (a: T, b: T) => boolean): void {
 在一些特殊情况下，简单的排序算法更有效；
 简单的排序算法思想衍生出复杂的排序算法；
 作为子过程，改进更复杂的排序算法
+
+**选择排序的优化**
+
+```typescript
+//在每一轮中, 可以同时找到当前未处理元素的最大值和最小值
+function selectionSort<T extends number | string>(arr: T[]): void {
+  let left = 0;
+  let right = arr.length - 1;
+
+  while (left < right) {
+    let minIndex = left;
+    let maxIndex = right;
+
+     // 在每一轮查找时, 要保证arr[minIndex] <= arr[maxIndex]
+    if (arr[minIndex] > arr[maxIndex]) {
+      [arr[minIndex], arr[maxIndex]] = [arr[maxIndex], arr[minIndex]];
+    }
+
+    // 在 (left, right) 开区间内查找最小值和最大值
+    for (let i = left + 1; i < right; i++) {
+      if (arr[i] < arr[minIndex]) {
+        minIndex = i;
+      } else if (arr[i] > arr[maxIndex]) {
+        maxIndex = i;
+      }
+    }
+
+    // 将最小值放到左端
+    [arr[left], arr[minIndex]] = [arr[minIndex], arr[left]];
+
+    // 将最大值放到右端
+    [arr[right], arr[maxIndex]] = [arr[maxIndex], arr[right]];
+
+    left++;
+    right--;
+  }
+}
+```
 
 ### 插入排序
 
@@ -203,3 +239,229 @@ testSort('insertionSort', insertionSort, nearlySortedArray); // 0.00001s
 
 可见插入排序虽然是o（n2）的算法，但在有些情况下却非常有效。
 
+### 冒泡排序
+
+```typescript
+// 基础冒泡排序
+function bubbleSort<T extends number | string>(arr: T[]): void {
+  let n = arr.length;
+  let swapped: boolean;
+
+  do {
+    swapped = false;
+    for (let i = 1; i < n; i++) {
+      if (arr[i - 1] > arr[i]) {
+        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; // 交换
+        swapped = true;
+      }
+    }
+    n--; // 最大值已冒泡到末尾，下次不比较
+  } while (swapped);
+}
+
+// 优化冒泡排序（记录最后交换位置）
+function bubbleSort2<T extends number | string>(arr: T[]): void {
+  let n = arr.length;
+  let newn: number;
+
+  do {
+    newn = 0; // 记录最后一次发生交换的位置
+    for (let i = 1; i < n; i++) {
+      if (arr[i - 1] > arr[i]) {
+        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+        newn = i; // 更新最后交换位置
+      }
+    }
+    n = newn; // 下一轮只需扫描到 newn（newn 之后已有序）
+  } while (newn > 0);
+}
+```
+
+其他：希尔排序
+
+```typescript
+function shellSort(arr: number[]): void;
+function shellSort(arr: string[]): void;
+function shellSort<T extends number | string>(arr: T[]): void {
+  const n = arr.length;
+  if (n <= 1) return;
+
+  // 1. 计算 Knuth 增量序列：1, 4, 13, 40, 121, ...
+  let h = 1;
+  while (h < Math.floor(n / 3)) {
+    h = 3 * h + 1;
+  }
+
+  // 2. 按 h 递减进行 h-sort
+  while (h >= 1) {
+    // 对 arr[i], arr[i-h], arr[i-2*h], arr[i-3*h]... 使用插入排序
+    for (let i = h; i < n; i++) {
+      const e = arr[i]; // 当前待插入元素
+      let j = i;
+
+      // 在子序列中向前比较：arr[j - h], arr[j - 2h], ...
+      while (j >= h && e < arr[j - h]) {
+        arr[j] = arr[j - h]; // 后移
+        j -= h;
+      }
+      arr[j] = e; // 插入
+    }
+
+    h = Math.floor(h / 3); // 下一个增量（整数除法）
+  }
+}
+```
+
+## 高级排序
+
+### 归并排序
+
+```typescript
+function mergeSort<T extends number | string>(arr: T[]): void {
+  if (arr.length <= 1) return;
+  __mergeSort(arr, 0, arr.length - 1);
+}
+
+//递归使用归并排序，对arr[l....r]的范围进行排序
+function __mergeSort<T extends number | string>(arr: T[], l: number, r: number): void {
+  if (l >= r) return;
+
+  const mid = Math.floor((l + r) / 2);
+  __mergeSort(arr, l, mid);
+  __mergeSort(arr, mid + 1, r);
+  __merge(arr, l, mid, r);
+}
+
+//将arr[l...mid]和arr[mid+1...r]两部分进行归并
+function __merge<T extends number | string>(arr: T[], l: number, mid: number, r: number): void {
+  // 1. 复制到辅助数组 aux（长度 = r - l + 1）
+  const aux: T[] = new Array(r - l + 1);
+  for (let i = l; i <= r; i++) {
+    aux[i - l] = arr[i];
+  }
+
+  // 2. 双指针合并回原数组
+  let i = l;      // 左半部分指针 [l, mid]
+  let j = mid + 1; // 右半部分指针 [mid+1, r]
+
+  for (let k = l; k <= r; k++) {
+    if (i > mid) {
+      // 左半部分耗尽，取右半部分
+      arr[k] = aux[j - l];
+      j++;
+    } else if (j > r) {
+      // 右半部分耗尽，取左半部分
+      arr[k] = aux[i - l];
+      i++;
+    } else if (aux[i - l] < aux[j - l]) {
+      // 左 < 右，取左
+      arr[k] = aux[i - l];
+      i++;
+    } else {
+      // 左 >= 右，取右（保证稳定性：相等时右后放）
+      arr[k] = aux[j - l];
+      j++;
+    }
+  }
+}
+```
+
+### 优化
+
+测试比较插入排序和归并排序
+
+```typescript
+console.log("----Test for Random Array-----")
+const radomArray = generateRandomArray(10000,0,10000);
+testSort("mergeSort", mergeSort, radomArray);
+testSort("insertSort",insertionSort,radomArray);
+
+console.log("----Test for Random Nearly Ordered Array-----")
+
+const nearlyOrderedArray = generateNearlyOrderedArray(10000,10);
+testSort("mergeSort", mergeSort, nearlyOrderedArray);
+testSort("insertSort",insertionSort,nearlyOrderedArray);
+
+//----Test for Random Array-----
+//mergeSort: 0.0051 s   
+//insertSort: 0.0254 s  
+//----Test for Random Nearly Ordered Array-----
+//mergeSort: 0.0009 s   
+//insertSort: 0.0001 s 
+```
+
+**在接近有序的数组时，插入排序更有效。原因：插入排序对于有序的数组会降到O（n）的复杂度**
+那对于归并排序，如何优化归并排序？
+
+1. 对于**稍微有序的数组，如果有序，可以减少merge操作**
+
+   ```typescript
+    __mergeSort(arr,l,mid);
+    __mergeSort(arr,mid+1,r);
+    __merge(arr,l,mid,r);
+   ```
+
+   如果此时arr[mid ]<arr[mid+1]相当于整个数组有序
+   改进：
+
+   ```typescript
+       __mergeSort(arr,l,mid);
+       __mergeSort(arr,mid+1,r);
+       if(arr[mid]>arr[mid+1]) return ;//如果此时arr[mid ]<arr[mid+1]相当于整个数组有序,面对有可能有序的数组可以这样做
+       __merge(arr,l,mid,r);
+   
+   ```
+
+2. 对于所有排序都有的：**递归到底**的情况
+
+   上文的归并排序是递归到只有一个元素的时候返回，事实上，**当递归到元素数组非常小的时候，我们可以转而使用插入排序来提高性能**
+
+   这里有两个原因：
+
+   1. 元素数据少的时候，整个数组近乎有序的概率就会比较大，此时插入排序有优势
+   2. 插入排序最差的时间复杂度是n方级别，而归并是nlogn级别，对于n方还是nlogn，前面都有一个常数的系数c，插入排序的这个系数小，换句话说，当n小到一定程度的时候，插入排序会比归并排序快一些。
+
+   ```typescript
+   if(l>=r)  return ;
+   ```
+
+   修改为
+
+   ```typescript
+   if(r-l<=15){
+      insertionSort(arr,l,r);
+      return;
+   }
+   ```
+
+   
+
+   
+
+   
+
+   以上为自顶向下的归并，下面看看：
+
+   **自底向上的归并排序**
+
+   ```typescript
+   // 自底向上的归并排序（非递归）
+   function mergeSortBU(arr: number[]): void {
+     const n = arr.length;
+     if (n <= 1) return;
+   
+     // sz: 当前子数组的大小（1, 2, 4, 8, ...）
+     for (let sz = 1; sz < n; sz *= 2) {
+       // i: 每次处理两个相邻的 sz 长度的子数组
+       for (let i = 0; i + sz < n; i += sz * 2) {
+         const left = i;
+         const mid = i + sz - 1;
+         const right = Math.min(i + sz * 2 - 1, n - 1);
+   
+         __merge(arr, left, mid, right);
+       }
+     }
+   }
+   ```
+
+   
