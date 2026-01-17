@@ -1,8 +1,8 @@
 # 排序
 
-## 排序基础
+## 1. 排序基础
 
-### 选择排序
+### 1.1 选择排序
 
 ```typescript
 function selectionSort<T>(arr: T[], compareFn?: (a: T, b: T) => boolean): void {
@@ -68,7 +68,7 @@ function selectionSort<T extends number | string>(arr: T[]): void {
 }
 ```
 
-### 插入排序
+### 1.2 插入排序
 
 基础插入排序
 
@@ -239,7 +239,7 @@ testSort('insertionSort', insertionSort, nearlySortedArray); // 0.00001s
 
 可见插入排序虽然是o（n2）的算法，但在有些情况下却非常有效。
 
-### 冒泡排序
+### 1.3 冒泡排序
 
 ```typescript
 // 基础冒泡排序
@@ -312,9 +312,9 @@ function shellSort<T extends number | string>(arr: T[]): void {
 }
 ```
 
-## 高级排序
+## 2. 高级排序
 
-### 归并排序
+### 2.1 归并排序
 
 ```typescript
 function mergeSort<T extends number | string>(arr: T[]): void {
@@ -458,4 +458,210 @@ testSort("insertSort",insertionSort,nearlyOrderedArray);
    }
    ```
 
-### 快速排序
+### 2.2 快速排序
+
+```typescript
+// 对arr[l....r]部分进行partition操作
+// 返回p，使得 arr[l...p-1] < arr[p] < arr[p+1...r]
+function __partition(arr: number[], l: number, r: number): number {
+  const pivot = arr[l];
+
+  let j = l;
+
+  for (let i = l + 1; i <= r; i++) {
+    if (arr[i] < pivot) {
+      j++;
+      [arr[j], arr[i]] = [arr[i], arr[j]]; 
+    }
+  }
+
+  [arr[l], arr[j]] = [arr[j], arr[l]];
+  return j;
+}
+
+// 递归快排：对 arr[l...r] 排序
+function __quickSort(arr: number[], l: number, r: number): void {
+  if (l >= r) return; //递归到底的情况
+
+  const p = __partition(arr, l, r); // 分区，返回 pivot 最终位置
+  __quickSort(arr, l, p - 1);       // 递归排序左半部分
+  __quickSort(arr, p + 1, r);       // 递归排序右半部分
+}
+
+function quickSort(arr: number[]): void {
+  if (arr.length <= 1) return;
+  __quickSort(arr, 0, arr.length - 1);
+}
+
+```
+
+快速排序最差情况，退化为O（n2）即当数组有序的时候
+并且，在现在我们选定的是左侧的第一个元素作为标定的元素，然而我们希望的是，尽可能选择数组中间的那个元素作为标定的元素。
+如何定位这个元素？我们**随机选择**一个元素，快速排序的时间复杂度的期望值是o（nlogn）
+
+#### 优化思路
+
+```typescript
+// 分区函数：随机选择 pivot，避免最坏情况
+function __partition(arr: number[], l: number, r: number): number {
+  // 生成 [l, r] 范围内的随机整数, 将随机选中的元素与 arr[l] 交换
+  const randomIndex = Math.floor(Math.random() * (r - l + 1)) + l;
+  [arr[l], arr[randomIndex]] = [arr[randomIndex], arr[l]];
+
+  const pivot = arr[l];
+  let j = l; 
+  for (let i = l + 1; i <= r; i++) {
+    if (arr[i] < pivot) {
+      j++;
+      [arr[j], arr[i]] = [arr[i], arr[j]];
+    }
+  }
+  [arr[l], arr[j]] = [arr[j], arr[l]];
+  return j;
+}
+```
+
+在这里我们相当于编写了一个**随机算法**，就是我不能保证我的算法一定非常快或者一定是正确的，但是我可以保证我的算法在99.9%的情况下（也就是一个非常高的概率的情况下）都能比较快的得到正确结果。
+此时，快排最坏的随机复杂度依然是o（n2),但是退化到o（n2）级别的概率是极其极其低的）
+
+#### 双路快速排序法(改进Partition部分)
+
+对于快排中的 **重复**元素，根据上述Partition我们把数组分为了两个部分，前面的部分小于标号，后面的部分大于等于标号
+
+![在这里插入图片描述](note.assets/e10f4dfa597bb067a81263ec0d37f4f1.png)
+
+所以对于当数组中有很多相等的元素时，算法效率降低退化至O（n2）级别
+因为数组的两部分极其不平衡，对于每个重复多次的键值，均需要交换多次。
+
+**如何改进Partition部分？**: 从数组前后开始往中间扫描
+
+![在这里插入图片描述](note.assets/e1ae8e529046ec76ef4b179d68d62714.png)
+
+![在这里插入图片描述](note.assets/4acdcde6a3978687f28611aa898c287e.png)
+
+![在这里插入图片描述](note.assets/1623c646a0d501daa5b15fa9e6c4b4d3.png)
+
+![在这里插入图片描述](note.assets/aa9e806edcba0ab2678639f6baf3d9f2.png)
+
+双路快速排序法:
+
+```typescript
+function __quickSort2(arr: number[], l: number, r: number): void {
+  if (r - l <= 15) {
+    insertionSortInRange(arr, l, r);
+    return;
+  }
+
+  const p = __partition2(arr, l, r);
+  __quickSort2(arr, l, p - 1);
+  __quickSort2(arr, p + 1, r);
+}
+
+// 双指针分区
+function __partition2(arr: number[], l: number, r: number): number {
+  const randomIndex = Math.floor(Math.random() * (r - l + 1)) + l;
+  [arr[l], arr[randomIndex]] = [arr[randomIndex], arr[l]];
+
+  // ✅ 优化部分：arr[l+1....i)<=v;arr[j....r]>=v
+  const pivot = arr[l];
+  let i = l + 1; // 左指针：寻找 >= pivot 的元素
+  let j = r;     // 右指针：寻找 <= pivot 的元素
+
+  while (true) {
+    // 向右找到第一个 >= pivot 的元素
+    while (i <= r && arr[i] < pivot) i++;
+    // 向左找到第一个 <= pivot 的元素
+    while (j >= l + 1 && arr[j] > pivot) j--;
+
+    if (i > j) break;
+
+    // 交换逆序对
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    i++;
+    j--;
+  }
+
+  // 将 pivot 放到正确位置
+  [arr[l], arr[j]] = [arr[j], arr[l]];
+  return j;
+}
+```
+
+#### 三路快速排序
+
+使用快排的思想给带有大量**重复键值**的数组排序的改进：
+三路快速排序：
+
+![在这里插入图片描述](note.assets/40bfb6b988189cf2cb3808323cb72075.png)
+
+当i指向的当前元素为arr[i]=e，考察e：
+
+- e<v,swap(arr[i],arr[lt+1]),lt++,i++
+- e=v,i++
+- e>v,swap(arr[i],arr[gt-1],gt–;
+
+```typescript
+// 三路快排核心：对 arr[l...r] 排序
+// 将arr[l...r]分为<v;==v;>v三部分,之后递归对<v;>v两部分继续进行三路快速排序
+function __quickSort3Ways(arr: number[], l: number, r: number): void {
+  if (r - l <= 15) {
+    insertionSortInRange(arr, l, r);
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * (r - l + 1)) + l;
+  [arr[l], arr[randomIndex]] = [arr[randomIndex], arr[l]];
+  const pivot = arr[l];
+
+  // 三路划分指针
+  let lt = l;      // arr[l+1 ... lt] < pivot
+  let gt = r + 1;  // arr[gt ... r] > pivot
+  let i = l + 1;   //arr[lt+1....i)==v i是下个循环正在考察的元素
+
+  // 划分过程：[l+1, i) 是 == pivot 的区域
+  while (i < gt) {
+    if (arr[i] < pivot) {
+      // 放入 < 区：与 lt+1 交换
+      [arr[i], arr[lt + 1]] = [arr[lt + 1], arr[i]];
+      lt++;
+      i++;
+    } else if (arr[i] > pivot) {
+      // 放入 > 区：与 gt-1 交换（注意：i 不自增，因为新换来的元素未检查）
+      [arr[i], arr[gt - 1]] = [arr[gt - 1], arr[i]];
+      gt--;
+    } else {
+      // == pivot，直接扩展中间区
+      i++;
+    }
+  }
+
+  // 将 pivot (arr[l]) 与 lt 位置交换，使 arr[lt] == pivot
+  [arr[l], arr[lt]] = [arr[lt], arr[l]];
+  
+  __quickSort3Ways(arr, l, lt - 1);   // < pivot
+  __quickSort3Ways(arr, gt, r);       // > pivot
+}
+```
+
+### 2.3 衍生问题
+
+归并和快排都使用了**分治**的思想
+
+##### 问题一：求逆序对个数
+
+即排在前面的数字小，一个数组中逆序对的数量可以用来衡量数组的有序程度。
+
+- 暴力解法：考察每一个数对，复杂度O(n2)
+- mergeSort的思路求逆数对
+
+![在这里插入图片描述](note.assets/ffc2dfc5fab74837bd2630245bdd5876.png)
+
+##### 问题二：取数组中第n大的元素
+
+对于求数组中的最大值，最小值，遍历即可，复杂度o(n)
+对于求第n大的元素：
+
+- 排序，o（nlogn）
+- quickSort的思路求数组中第n大元素 o（n）
+
+![在这里插入图片描述](note.assets/133ade4c108ffbbf42138bb29a78a342.png)
