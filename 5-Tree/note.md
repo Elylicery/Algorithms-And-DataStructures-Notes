@@ -359,11 +359,79 @@ function main() {
 main();
 ```
 
+## 2. 二分查找法Binary Search
+
+对于有序数列，才能使用二分查找法（排序的作用）（logn级别复杂度）
+
+使用递归方式实现二分查找法
+递归实现通常实现起来更容易，但在性能上会有略差。
+
+```typescript
+// 迭代版二分查找
+function binarySearch<T>(arr: T[], target: T): number {
+  let l = 0, r = arr.length - 1;
+
+  while (l <= r) {
+    const mid = l + Math.floor((r - l) / 2);
+
+    if (arr[mid] === target) {
+      return mid;
+    }
+
+    if (target < arr[mid]) {
+      r = mid - 1; // 在左半部分 arr[l, mid-1] 查找
+    } else {
+      l = mid + 1; // 在右半部分 arr[mid+1, r] 查找
+    }
+  }
+
+  return -1; // 未找到
+}
+
+// 递归版二分查找
+function _binarySearch2<T>(arr: T[], l: number, r: number, target: T): number {
+  if (l > r) {
+    return -1; // 递归终止条件
+  }
+
+  const mid = l + Math.floor((r - l) / 2);
+
+  if (arr[mid] === target) {
+    return mid;
+  } else if (target < arr[mid]) {
+    return _binarySearch2(arr, l, mid - 1, target);
+  } else {
+    return _binarySearch2(arr, mid + 1, r, target);
+  }
+}
+
+function binarySearch2<T>(arr: T[], target: T): number {
+  return _binarySearch2(arr, 0, arr.length - 1, target);
+}
+```
+
+### 二分查找法的变种
+
+**两个非常重要的函数：floor和ceil（有的地方也称为lowerBound和upperBound）**
+
+为什么要使用这两个函数？
+之前实现的二分查找法（上文），都是假设在这个数组中没有重复元素的，当然有重复元素时，依然能找到这个元素的索引，只不过这个元素可能在数组中出现过很多次，上文的二分查找无法找到具体哪个索引。
+
+![在这里插入图片描述](note.assets/a4240bff58e9e02bf825e866536b943d.png)
+
+相应定义了两个函数，floor找到这个数字v在数组中第一次出现的位置。ceil是v最后一次出现的位置
+
+![在这里插入图片描述](note.assets/22a4f9593278406ab866d2ef690e46f0.png)
+
+当在数组中查找的元素不存在的时候，（如查找42），上文的算法得到的是-1，但是定义floor和ceil后，如图，floor返回的是42之前的元素（41）的元素的最后一个位置，ceil返回的是42之后的元素（43）的第一个位置。
+
 ## 2. 二分搜索树
 
-### 2.1 BST
+### 2.1 二分搜索树BST
 
 ![在这里插入图片描述](note.assets/74f0b824e5d09e6b7e438cbd2b00e1d4.png)
+
+但是。二分搜索树不一定是一个完全二叉树，所以不能用数组，通常使用node结点表示key-value对，使用指针表示结点之间的关系。
 
 注意：二分搜索树中的结点必须具有可比较性；
 
@@ -398,6 +466,18 @@ class BST<E extends { compareTo(other: E): number }> {
     }
 }
 ```
+
+二分搜索树的优势：
+
+|            | 查找元素 | 插入元素 | 删除元素 |
+| ---------- | -------- | -------- | -------- |
+| 普通数组   | O(n)     | O(n)     | O(n)     |
+| 顺序数组   | O(logn)  | O(n)     | O(n)     |
+| 二分搜索树 | O(logn)  | O(logn)  | O(logn)  |
+
+高效，不仅可查找数据，还可以高效地插入，删除数据 —— 动态维护数据
+
+可以方便地回答很多数据之间的关系问题：min、max、floor、ceil、rank、select
 
 ### 2.2  添加元素
 
