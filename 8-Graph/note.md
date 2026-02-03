@@ -466,11 +466,229 @@ console.log(shortestPathFinder.length(6)); // 1
 
 ```
 
+## 3. 有权图
 
+有权图的表示
 
-### 2.4 最小生成树
+* 邻接矩阵：存储为edge类型
+* 邻接表：每一个结点存储两个信息：相邻节点+权值
 
+```typescript
+export class Edge<T> {
+  public readonly v: number; // 起点
+  public readonly w: number; // 终点
+  public readonly weight: T; // 权重
+
+  constructor(v: number, w: number, weight: T) {
+    this.v = v;
+    this.w = w;
+    this.weight = weight;
+  }
+
+  wt(): T {
+    return this.weight;
+  }
+
+  // 获取另一个顶点（用于遍历）
+  other(x: number): number {
+    if (x === this.v) return this.w;
+    if (x === this.w) return this.v;
+    throw new Error('Invalid vertex');
+  }
+}
 ```
+
+稠密图
+
+```typescript
+// 稠密图-邻接矩阵
+import { Edge } from './Edge';
+
+export class DenseGraph<T> {
+  private n: number;                // 顶点数
+  private m: number;                // 边数
+  private directed: boolean;         // 是否有向
+  private g: (Edge<T> | null)[][];  // 邻接矩阵：g[i][j] 存储边或 null
+
+  constructor(n: number, directed: boolean) {
+    this.n = n;
+    this.m = 0;
+    this.directed = directed;
+    // g初始化为n*n的矩阵，每一个g[i][j]指向一个边的信息，初始化为NULL
+    this.g = Array.from({ length: n }, () => 
+      Array.from({ length: n }, () => null)
+    );
+  }
+
+  // 获取顶点个数
+  V(): number {
+    return this.n;
+  }
+
+  // 获取边的个数
+  E(): number {
+    return this.m;
+  }
+
+  // 向图中添加一个边，权值为weight
+  addEdge(v: number, w: number, weight: T): void {
+    if (v < 0 || v >= this.n || w < 0 || w >= this.n) {
+      throw new Error(`Vertex index out of range [0, ${this.n - 1}]`);
+    }
+
+    //如果从v到w已经有边，删除这条边
+    if (this.hasEdge(v, w)) {
+      this.g[v][w] = null;
+      if (v !== w && !this.directed) {
+        this.g[w][v] = null;
+      }
+      this.m--;
+    }
+
+    // 创建新边
+    this.g[v][w] = new Edge(v, w, weight);
+    if (v !== w && !this.directed) {
+      this.g[w][v] = new Edge(w, v, weight);
+    }
+    this.m++;
+  }
+
+  // 判断是否存在从 v 到 w 的边
+  hasEdge(v: number, w: number): boolean {
+    if (v < 0 || v >= this.n || w < 0 || w >= this.n) {
+      return false;
+    }
+    return this.g[v][w] !== null;
+  }
+
+  // 显示图的信息（调试用）
+  show(): void {
+    for (let i = 0; i < this.n; i++) {
+      let row = '';
+      for (let j = 0; j < this.n; j++) {
+        if (this.g[i][j]) {
+          row += `${this.g[i][j]!.wt()}\t`;
+        } else {
+          row += 'NULL\t';
+        }
+      }
+      console.log(row);
+    }
+  }
+
+  // 邻边迭代器，传入一个图和一个顶点
+  //迭代在这个图中和这个顶点相连的所有边
+  adjIterator(v: number): Iterable<Edge<T>> {
+    if (v < 0 || v >= this.n) {
+      throw new Error(`Vertex ${v} out of range [0, ${this.n - 1}]`);
+    }
+
+    // 返回一个可迭代对象
+    return {
+      [Symbol.iterator]: () => {
+        let index = -1;//索引从-1开始，因为每次遍历都需要调用一次next()
+        return {
+          //返回图G中与顶点v相连接的下一个边
+          next: (): IteratorResult<Edge<T>> => {
+            // //从当前index开始向后搜索，直到找到一个g[v][index]为true
+            index++;
+            while (index < this.n) {
+              if (this.g[v][index] !== null) {
+                return { done: false, value: this.g[v][index]! };
+              }
+              index++;
+            }
+             //若没有顶点和v相连接，则返回undefined
+            return { done: true, value: undefined as any };
+          }
+        };
+      }
+    };
+  }
+}
+```
+
+稀疏图
+
+```typescript
+// SparseGraph.ts
+import { Edge } from './Edge';
+
+export class SparseGraph<T> {
+  private n: number;               // 顶点数
+  private m: number;               // 边数
+  private directed: boolean;        // 是否有向
+  private g: Edge<T>[][];          // 邻接表：g[i] 存储从 i 出发的所有边
+
+  constructor(n: number, directed: boolean) {
+    if (n < 0) throw new Error('Vertex count must be non-negative');
+    this.n = n;
+    this.m = 0;
+    this.directed = directed;
+    // 初始化邻接表：每个顶点对应一个空边列表
+    this.g = Array.from({ length: n }, () => []);
+  }
+
+  // 获取顶点数
+  V(): number {
+    return this.n;
+  }
+
+  // 获取边数
+  E(): number {
+    return this.m;
+  }
+
+  // 添加边 v-w，权重为 weight
+  addEdge(v: number, w: number, weight: T): void {
+    if (v < 0 || v >= this.n || w < 0 || w >= this.n) {
+      throw new Error(`Vertex index out of range [0, ${this.n - 1}]`);
+    }
+
+    //注意，由于在邻接表的情况，查找是否有重边需要遍历整个链表
+    //我们的程序允许重边的出现
+    this.g[v].push(new Edge(v, w, weight));
+    if (v !== w && !this.directed) {
+      this.g[w].push(new Edge(w, v, weight));
+    }
+    this.m++;
+  }
+
+  // 判断是否存在从 v 到 w 的边
+  hasEdge(v: number, w: number): boolean {
+    if (v < 0 || v >= this.n || w < 0 || w >= this.n) {
+      return false;
+    }
+    // 遍历 v 的邻接边，检查是否有终点为 w 的边
+    return this.g[v].some(edge => edge.other(v) === w);
+  }
+
+  // 显示图的信息（调试用）
+  show(): void {
+    for (let i = 0; i < this.n; i++) {
+      const edges = this.g[i]
+        .map(edge => `(to: ${edge.w}, wt: ${edge.wt()})`)
+        .join('\t');
+      console.log(`vertex ${i}:\t${edges}`);
+    }
+  }
+
+  // 返回可迭代的邻接边集合
+  adjIterator(v: number): Iterable<Edge<T>> {
+    if (v < 0 || v >= this.n) {
+      throw new Error(`Vertex ${v} out of range [0, ${this.n - 1}]`);
+    }
+    return this.g[v]; // 数组本身就是可迭代的！
+  }
+}
+```
+
+##  4. 最小生成树MST和切分定理
+
+- 例如：电缆布线设计，网络设计，电路设计。
+- 最小生成树：针对连通图，针对**带权无向图**
+
+```typescript
 /*
     A
   / | \
@@ -490,5 +708,286 @@ B---F---E
 */
 ```
 
+### 4.1 **切分定理（Cut Property）**
 
+把图中的结点分为两部分，成为一个**切分（cut）**
+如果一个边的两个端点，属于切分（cut）不同的两边，这个边称为**横切边**
 
+> **切分定理**：给定**任意**切分，横切边中权值最小的边必然属于最小生成树 
+
+### 4.2 Prim算法
+
+#### Lazy Prim
+
+在这里选取权值最小的边的时候要利用到最小堆，以下为prime算法：
+
+```typescript
+// LazyPrimMST.ts
+import { MinPriorityQueue } from '@datastructures-js/priority-queue';
+
+// 注意：LeetCode 中无需 import，直接使用即可
+// 本地测试时需安装：npm install @datastructures-js/priority-queue
+
+export class LazyPrimMST<T> {
+  private G: IGraph;                // 图的引用
+  private pq: MinPriorityQueue<Edge<T>>; // 最小堆：存储横切边
+  private marked: boolean[];            // marked[v] = v 是否已在 MST 中
+  private mst: Edge<T>[];              // MST 所包含的所有便
+  private mstWeight: number;           // MST 的总权重
+
+  // 使用prime求图的MST
+  constructor(graph: IGraph) {
+    this.G = graph;
+    const n = this.G.V();
+    
+    // 初始化
+    this.marked = new Array(n).fill(false);
+    this.mst = [];
+    
+    // 使用 LeetCode 内置 MinPriorityQueue，注意：必须提供 priority 函数（返回数字）
+    this.pq = new MinPriorityQueue<Edge<T>>((edge) => edge.wt() as number);
+
+    // Lazy Prim 核心逻辑
+    this.visit(0); // 从顶点 0 开始
+
+    while (!this.pq.isEmpty()) {
+      const e = this.pq.dequeue()!; // 取出最小权重边
+
+      // 如果边的两端都在 MST 中，跳过（无效横切边）
+      if (this.marked[e.v] === this.marked[e.w]) {
+        continue;
+      }
+
+      // 否则，这条边属于 MST
+      this.mst.push(e);
+
+      // 访问未访问的端点
+      if (!this.marked[e.v]) {
+        this.visit(e.v);
+      } else {
+        this.visit(e.w);
+      }
+    }
+
+    // 计算总权重
+    this.mstWeight = this.mst.reduce((sum, edge) => sum + (edge.wt() as number), 0);
+  }
+
+  // 访问顶点 v：将所有连接到未访问顶点的边加入堆
+  private visit(v: number): void {
+    if (this.marked[v]) return;
+    this.marked[v] = true;
+
+    // 遍历 v 的所有邻接边
+    for (const edge of this.G.adjIterator(v)) {
+      const other = edge.other(v);
+      if (!this.marked[other]) {
+        this.pq.enqueue(edge);
+      }
+    }
+  }
+
+  // 返回 MST 的所有边
+  mstEdges(): Edge<T>[] {
+    return [...this.mst]; // 返回副本
+  }
+
+  // 返回 MST 的总权重
+  result(): number {
+    return this.mstWeight;
+  }
+}
+
+```
+
+- 时间复杂度 O（ElogE）
+
+#### Prime的优化
+
+进行优化使之时间复杂度为O（ElogV）
+
+维护一个**IndexMinHeap**数据结构，最小索引堆中的元素个数和图中的顶点个数一致，在堆操作这里提高了效率，遍历边的次数也变小了。
+
+```typescript
+export class PrimeMST<T> {
+  private G: IGraph; // 图的引用
+  private ipq: IndexMinHeap<T>; // 最小索引堆存储每个顶点的最小边权重
+  private edgeTo: (Edge<T> | null)[]; // edgeTo[v]存储连接v和MST的最小边
+  private marked: boolean[]; // marked[v] = v 是否已在 MST 中
+  private mst: Edge<T>[]; // MST 所包含的所有便
+  private mstWeight: number; // MST 的总权重
+
+  // 访问结点v
+  private visit(v: number): void {
+    if (this.marked[v]) return;
+    this.marked[v] = true;
+
+    // 将和节点v相连的未放问的另一端点，和与之相连接的边，放入最小堆中
+    for (const edge of this.G.adjIterator(v)) {
+      const w = edge.other(v);
+      // 如果w未被访问
+      if (!this.marked[w]) {
+        //如果从没有考虑过这个端点，直接将这个端点和与之相连接的边加入索引堆
+        if (this.edgeTo[w] === null) {
+          this.edgeTo[w] = edge;
+          this.ipq.insert(w, edge.wt());
+        }
+        //如果考虑过这个端点，但现在的边比之前考虑的边更短，则进行替换
+        else if (edge.wt() < this.edgeTo[w]!.wt()) {
+          //更新最小边
+          this.edgeTo[w] = edge;
+          //更新索引堆中的权值
+          this.ipq.change(w, edge.wt());
+        }
+      }
+    }
+  }
+
+  constructor(graph: IGraph) {
+    this.G = graph;
+    const n = this.G.V();
+
+    // 初始化
+    this.ipq = new IndexMinHeap<T>(n);
+    this.edgeTo = new Array(n).fill(null);
+    this.marked = new Array(n).fill(false);
+    this.mst = [];
+
+    // Prim 核心逻辑
+    this.visit(0);
+
+    while (!this.ipq.isEmpty()) {
+      //使用最小索引堆找出已经访问的边中权值最小的边
+      //最小索引堆中存储的是点的索引，通过点的索引找到相对应的边
+      const v = this.ipq.extractMinIndex();
+      this.mst.push(this.edgeTo[v]!);
+      //访问这个点
+      this.visit(v);
+    }
+
+    // 计算总权重
+    this.mstWeight = this.mst.reduce(
+      (sum, edge) => sum + (edge.wt() as number),
+      0,
+    );
+  }
+
+  // 返回 MST 的所有边
+  mstEdges(): Edge<T>[] {
+    return [...this.mst]; // 返回副本
+  }
+
+  // 返回 MST 的总权重
+  result(): number {
+    return this.mstWeight;
+  }
+}
+```
+
+测试代码
+
+```typescript
+const graph = new DenseGraph<Number>(7, false);
+graph.addEdge(0, 1, 7);
+graph.addEdge(0, 3, 5);
+graph.addEdge(1, 2, 8);
+graph.addEdge(1, 3, 9);
+graph.addEdge(1, 4, 7);
+graph.addEdge(2, 4, 5);
+
+// const prim = new LazyPrimMST(graph);
+const prim = new PrimeMST(graph);
+console.log(prim.result()); // 24
+```
+
+### 4.3 Krusk算法
+
+思路：每次都找最短的那边条，只要不构成环，那条边一定是最小生成树的边。
+
+为什么呢？因为根据这条最短边，我们总能找到一个切分，使得该边为这个切分下的横切边的最短边。
+
+**如果判断加入边后有没有环的存在呢？使用并查集**
+
+```typescript
+export class KruskalMST<T> {
+  private mst: Edge<T>[]; // MST 所包含的所有边
+  private mstWeight: number; // MST 的总权重
+
+  constructor(graph: IGraph) {
+    const n = graph.V();
+    if (n === 0) {
+      this.mst = [];
+      this.mstWeight = 0;
+      return;
+    }
+
+    // 1.收集图中的所有边（避免重复：只取w>v的边）
+    const edges: Edge<T>[] = [];
+    for (let v = 0; v < n; v++) {
+      for (const e of graph.adjIterator(v)) {
+        if (e.other(v) > v) {
+          // 无向图去重
+          edges.push(e);
+        }
+      }
+    }
+
+    // 2.将边按权重排序
+    edges.sort((a, b) => (a.wt() as number) - (b.wt() as number));
+    
+    // 3.创建并查集
+    const uf = new UnionFind(n); // UniondFind需要自己实现
+    this.mst = [];
+
+    // 4.Kruskal核心逻辑
+    for (const e of edges) {
+      /// 如果 MST 已完成（V-1 条边），提前退出
+      if (this.mst.length === n - 1) {
+        break;
+      }
+
+      //如果该边的两个端点是联通的，说明加入这条边将产生幻环，扔掉这条边
+      if (uf.isConnected(e.v, e.w)) {
+        continue;
+      }
+
+      ///否则，将这条边添加进最小生成树，同时标记边的两个端点联通
+      this.mst.push(e);
+      uf.union(e.v, e.w);
+    }
+
+    // 5.计算总权重
+    this.mstWeight = this.mst.reduce(
+      (sum, edge) => sum + (edge.wt() as number),
+      0,
+    );
+  }
+
+  // 返回 MST 的所有边
+  mstEdges(): Edge<T>[] {
+    return [...this.mst]; // 返回副本
+  }
+
+  // 返回 MST 的总权重
+  result(): number {
+    return this.mstWeight;
+  }
+}
+```
+
+### 4.4 最小生成树算法的思考
+
+**最小生成树问题**
+
+* lazy prim O(ElogE)
+* prim O(ElogV)
+* Kruskal O（ElogE）
+* ？？？？ O（E）？？？？（没有下限，待探索）
+
+如果横切边有相等的边，根据算法的具体实现，每次选择一个边，此时，图存在多个最小生成树。
+
+延伸问题：对于一个图有多少个最小生成树？？
+
+Vessotsky‘s algorithm
+
+将边逐渐的添加到生成树中，一旦形成环，删除环中权值最大的边（难度比较大）。
