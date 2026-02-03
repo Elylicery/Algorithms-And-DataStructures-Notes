@@ -991,3 +991,165 @@ export class KruskalMST<T> {
 Vessotsky‘s algorithm
 
 将边逐渐的添加到生成树中，一旦形成环，删除环中权值最大的边（难度比较大）。
+
+## 5. 最短路径
+
+### 5.1 最短路径问题和松弛操作
+
+![图](note.assets/7196edcfcfaf6faa17c93eba449ebe5f.png)
+
+之前说讲过的广度优先遍历：
+
+* 起点）到其他顶点的最短路径问题，通过BFS，得到了一棵树，这棵树就叫做最短路径树（shortest path tree）：即所有顶点距离起始顶点的总权值最小（注意和上一章所讲的最小生成树的区别）
+* 求得这个最短路径树的答案，其实就是解决了一个**单源最短路径（Single Source Shortest Path）**问题
+
+无权图的最短路径
+
+![在这里插入图片描述](note.assets/e64af2260563cc4f559e1818d1fc401a.png)
+
+**有权图的最短路径**
+
+![在这里插入图片描述](note.assets/fc5b39041f387b067cd0dec641632f03.png)
+
+**松弛操作Relaxation**：最短路径求解的核心
+当我们到达一个结点的时候，我们要尝试一下，从这个结点到其他结点所得到的路径长度是否比之前求过的不经过这个节点到其他节点所得到的路径短，如果更短，我们要更新原始节点到这个节点的路径信息。
+
+### 5.2 Dijkstra算法
+
+![在这里插入图片描述](note.assets/6dc515f90df9021a507b505c75ef014f.png)
+
+**Dijkstra单源最短路径算法：**
+
+- 前提：图中不能有负权边
+- 复杂度：O（E log（V））
+
+```typescript
+export class Dijkstra<T> {
+  private G: IGraph; // 图的引用
+  private s: number; // 起始点
+  private distTo: (number | null)[]; // distTo[v]存储从起始点s到v的最短路径长度
+  private marked: boolean[]; // marked[v]表示顶点v是否被访问过
+  private from: (Edge<T> | null)[]; // form[i]记录最短路径中，到达i点的边是哪一条，从而用来恢复整个最短路径
+
+  constructor(graph: IGraph, s: number) {
+    if (s < 0 || s >= graph.V()) {
+      throw new Error(`Source vertex ${s} out of range [0, ${graph.V() - 1}]`);
+    }
+
+    this.G = graph;
+    this.s = s;
+    const n = this.G.V();
+
+    // 初始化
+    this.distTo = new Array(n).fill(Infinity);
+    this.marked = new Array(n).fill(false);
+    this.from = new Array(n).fill(null);
+
+    // Dijkstra 核心逻辑
+    this.distTo[s] = 0;
+    this.from[s] = new Edge<T>(s, s, 0 as any); // 虚拟自环边
+
+    // 创建索引最小堆（ 存储顶点索引，按distTo的值排序）
+    const ipq = new IndexMinHeap<number>(n);
+    ipq.insert(s, this.distTo[s]!);
+
+    // Dijkstra 核心算法
+    while (!ipq.isEmpty()) {
+      const v = ipq.extractMinIndex(); //取出当前距离的最小的顶点
+      this.marked[v] = true;
+
+      // 对v的所有邻接边进行松弛操作
+      for (const e of this.G.adjIterator(v)) {
+        const w = e.other(v);
+
+        //如果从s点到w点的最短路径还没有找到
+        if (!this.marked[w]) {
+          //如果w点以前没有访问过
+          //或者访问过，但是通过当前的v点到w点距离更短，则进行更新
+          const newDist = this.distTo[v]! + (e.wt() as number);
+          if (this.from[w] === null || newDist < this.distTo[w]!) {
+            this.distTo[w] = newDist;
+            this.from[w] = e;
+
+            if (ipq.contains(w)) {
+              ipq.change(w, this.distTo[w]!);
+            } else {
+              ipq.insert(w, this.distTo[w]!);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 判断从 s 到 w 是否有路径
+  hasPathTo(w: number): boolean {
+    if (w < 0 || w >= this.G.V()) return false;
+    return this.marked[w];
+  }
+
+  // 返回从s点到w点的最短路径长度
+  shortestPathTo(w: number): number | null {
+    if (w < 0 || w >= this.G.V()) {
+      throw new Error(`Vertex ${w} out of range [0, ${this.G.V() - 1}]`);
+    }
+    if (!this.hasPathTo(w)) {
+      throw new Error(`No path from ${this.s} to ${w}`);
+    }
+    return this.distTo[w];
+  }
+
+  // 获取从 s 到 w 的最短路径（边序列）
+  shortestPath(w: number): Edge<T>[] {
+    if (!this.hasPathTo(w)) {
+      return [];
+    }
+
+    const path: Edge<T>[] = [];
+    let current = w;
+
+    // 从 w 反向回溯到 s
+    while (current !== this.s) {
+      const edge = this.from[current]!;
+      path.unshift(edge); // 插入到开头
+      current = edge.other(current);
+    }
+
+    return path;
+  }
+
+  // 打印路径（格式：s -> ... -> w）
+  showPath(w: number): void {
+    if (!this.hasPathTo(w)) {
+      console.log(`No path from ${this.s} to ${w}`);
+      return;
+    }
+
+    const path = this.shortestPath(w);
+    const vertices: number[] = [this.s];
+
+    for (const edge of path) {
+      vertices.push(edge.other(vertices[vertices.length - 1]));
+    }
+
+    console.log(vertices.join(" -> "));
+  }
+}
+```
+
+测试代码
+
+```typescript
+const graph = new DenseGraph<Number>(7, false);
+graph.addEdge(0, 1, 7);
+graph.addEdge(0, 3, 5);
+graph.addEdge(1, 2, 8);
+graph.addEdge(1, 3, 9);
+graph.addEdge(1, 4, 7);
+graph.addEdge(2, 4, 5);
+
+const distance = new Dijkstra(graph, 0);
+console.log(distance.shortestPathTo(4));//14
+distance.showPath(4); // 0 -> 1 ->4
+```
+
