@@ -425,9 +425,9 @@ function binarySearch2<T>(arr: T[], target: T): number {
 
 当在数组中查找的元素不存在的时候，（如查找42），上文的算法得到的是-1，但是定义floor和ceil后，如图，floor返回的是42之前的元素（41）的元素的最后一个位置，ceil返回的是42之后的元素（43）的第一个位置。
 
-## 2. 二分搜索树
+## 2. 二分搜索树 BST
 
-### 2.1 二分搜索树BST
+### 2.1 二分搜索树
 
 ![在这里插入图片描述](note.assets/74f0b824e5d09e6b7e438cbd2b00e1d4.png)
 
@@ -1257,3 +1257,4 @@ console.log(numArray.sumRange(0, 2)); // 输出：8（1+2+5）
 * 动态线段树
 * 区间操作相关另外一个重要数据结构：树状数组
 * 区间相关问题：RMQ Range Minimum Query
+

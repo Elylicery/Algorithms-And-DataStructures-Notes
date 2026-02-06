@@ -1153,3 +1153,179 @@ console.log(distance.shortestPathTo(4));//14
 distance.showPath(4); // 0 -> 1 ->4
 ```
 
+### 5.3 负权边和Bellman-Ford算法
+
+![在这里插入图片描述](note.assets/0bc6a9946e62b147524a1f8696f23a3b.png)
+
+依然依赖于松弛操作
+看下面这个图，从0到1到2（或者1和2），出现了**负权环**，**拥有负权环的图，没有最短路径**
+
+![图](note.assets/943b63137292c1c88e4e0e25e85accb4.png)
+
+**Bellman-Ford算法：图中可以有负权边，但是不能有负权环**
+前提：图中不能有负权环
+同时，Bellman-Ford可以判断图中是否有负权环
+复杂度 O（EV）
+
+**主要思想：
+如果一个图没有负权环，从一点到另外一点的最短路径，最多经过所有的V个顶线，有V-1条边
+否则，存在顶点经过了两次，即存在负权环**
+
+![图1](note.assets/c596affa5778f94ff3151c6e398f5ef5.png)
+
+![图2](note.assets/2844d6c16709841b89ac88ccfd79888e.png)
+
+**对一个点的一次松弛操作，就是找到经过这个点的另外一条路径，多一条边，权值更小。**
+
+**如果一个图没有负权环，从一点到另外一点的最短路径，最多经过所有的V个顶点，有V-1条边**
+
+**对所有的点进行V-1次松弛操作，理论上就找到了从源点到其他所有点的最短路径**
+**如果还可以继续松弛，则说原图中有负权环。**
+
+```typescript
+// BellmanFord.ts
+import { Edge } from './Edge';
+
+export class BellmanFord<T> {
+  private G: IGraph<T>; 
+  private s: number; //起始点
+  private distTo: (number | null)[];//disTo[i]存储从起始点s到i的最短路径长度
+  private from: (Edge<T> | null)[];//from[i]记录最短路径中，到达i点的边是哪一条，可以用来恢复整个最短路径
+  private hasNegativeCycle: boolean;//标记图中是否有负权环
+
+  //构造函数，使用Bellman-Ford求最短路径
+  constructor(graph: IGraph<T>, s: number) {
+    if (s < 0 || s >= graph.V()) {
+      throw new Error(`Start vertex ${s} out of range [0, ${graph.V() - 1}]`);
+    }
+
+    this.G = graph;
+    this.s = s;
+
+    // 初始化
+    this.distTo = new Array(n).fill(null);
+    this.from = new Array(n).fill(null);
+
+    this.distTo[s] = 0;
+    this.from[s] = new Edge(s, s, 0 as T); // 虚拟自环边
+
+    // Bellman-Ford: V-1 轮松弛
+    // 进行V-1次循环, 每一次循环求出从起点到其余所有点, 最多使用pass步可到达的最短距离
+    for (let pass = 1; pass < n; pass++) {
+      let updated = false;
+      //每次循环中对所有的边进行一遍松弛操作
+      //遍历所有边的方式是先遍历所有的顶点，然后遍历和所有顶点相邻的所有边
+      for (let v = 0; v < this.G.V(); v++) {
+        if (this.from[v] === null) continue; // v 不可达，跳过
+        for (const e of this.G.adjIterator(v)) {
+          const w = e.other(v);
+          const newDist = (this.distTo[v] as number) + (e.wt() as number);
+           // 对于每一个边首先判断e->v()可达
+                    // 之后看如果e->w()以前没有到达过， 显然我们可以更新distTo[e->w()]
+                    // 或者e->w()以前虽然到达过, 但是通过这个e我们可以获得一个更短的距离, 即可以进行一次松弛操作, 我们也可以更新distTo[e->w()]
+          if (this.distTo[w] === null || newDist < this.distTo[w]) {
+            this.distTo[w] = newDist;
+            this.from[w] = e;
+            updated = true;
+          }
+        }
+      }
+      if (!updated) break; // 提前终止
+    }
+
+    // 检测负权环
+    this.hasNegativeCycle = this.detectNegativeCycle();
+   private detectNegativeCycle(): boolean {
+    for (let v = 0; v < this.G.V(); v++) {
+      if (this.from[v] === null) continue;
+      for (const e of this.G.adjIterator(v)) {
+        const w = e.other(v);
+        if (this.distTo[w] !== null && 
+            (this.distTo[v] as number) + (e.wt() as number) < this.distTo[w]) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 是否有负权环
+  negativeCycle(): boolean {
+    return this.hasNegativeCycle;
+  }
+
+  // 判断是否可达
+  hasPathTo(w: number): boolean {
+    if (w < 0 || w >= this.G.V()) return false;
+    return this.from[w] !== null;
+  }
+
+  // 最短距离（若存在负环则抛错）
+  shortestPathTo(w: number): number {
+    if (w < 0 || w >= this.G.V()) {
+      throw new Error(`Vertex ${w} out of range`);
+    }
+    if (this.hasNegativeCycle) {
+      throw new Error('Graph contains negative cycle');
+    }
+    if (!this.hasPathTo(w)) {
+      throw new Error(`No path from ${this.s} to ${w}`);
+    }
+    return this.distTo[w]!;
+  }
+
+  // 获取路径（边序列）
+  shortestPath(w: number): Edge<T>[] {
+    if (!this.hasPathTo(w)) return [];
+
+    const path: Edge<T>[] = [];
+    let current = w;
+    
+    while (current !== this.s) {
+      const edge = this.from[current]!;
+      path.unshift(edge);
+      current = edge.other(current);
+    }
+    
+    return path;
+  }
+
+  // 打印路径
+  showPath(w: number): void {
+    if (!this.hasPathTo(w)) {
+      console.log(`No path from ${this.s} to ${w}`);
+      return;
+    }
+
+    const path = this.shortestPath(w);
+    const vertices = [this.s];
+    for (const edge of path) {
+  vertices.push(edge.other(vertices[vertices.length - 1]));
+    }
+    console.log(vertices.join(' -> '));
+  }
+}
+```
+
+#### 5.4 相关思考
+
+1. **单源最短路径算法：**具体实现，算法导论中将distTo[i]初始化为正无穷（简化了一定代码），但是我们并没有使用这种方式。
+   因为在程序中无法实现正无穷，一般指定一个非常大的数代表正无穷，所以如果能够知道这个图中的边的权值不超过多少，可以使用这种方法。
+   如果不知道，就可以使用上述代码中的逻辑。
+
+2. **Bellman-Ford算法的优化**：利用队列数据结构
+   queue-based bellman-ford算法
+
+3. **拓扑排序：**
+
+   ![图](note.assets/6f82a5cd2477b8211a35ae777659dc3b.png)
+
+4. **所有对最短路径算法**
+   Floyed算法，处理无负权环的图 O（V的3次方）
+
+5. **最长路径算法**
+
+   - 最长路径问题不能有正权环。
+   - 无权图的最长路径问题是指数级难度的。
+   - 对于有权图，不能使用Dijkstra求最长路径问题，可以使用Bellman-Ford算法
+
